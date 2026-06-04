@@ -105,6 +105,14 @@
   .info-box{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--text3);font-family:var(--mono);line-height:1.7;margin-top:12px}
   .info-box span{color:var(--accent)}
 
+  /* 圖片上傳 */
+  .img-upload-area{border:1px dashed var(--border2);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:all .15s;position:relative}
+  .img-upload-area:hover{border-color:var(--accent);background:var(--accent-dim)}
+  .img-upload-area input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .img-preview{position:relative;display:inline-block;margin-top:10px}
+  .img-preview img{max-height:120px;max-width:100%;border-radius:6px;border:1px solid var(--border);display:block}
+  .img-preview-del{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--red);border:none;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+  .img-uploading{font-size:12px;font-family:var(--mono);color:var(--amber);margin-top:6px}
   /* 儲存列 */
   .save-bar{position:fixed;bottom:0;left:260px;right:0;background:var(--surface);border-top:1px solid var(--border);padding:14px 40px;display:flex;align-items:center;justify-content:space-between;z-index:100}
   .save-msg{font-size:13px;font-family:var(--mono);color:var(--text3);display:flex;align-items:center;gap:8px}
@@ -297,6 +305,7 @@ function applySettings(d) {
     items.push({
       id,
       message: m.message || '',
+      image_url: m.image_url || null,
       repeat:  m.repeat  ?? false,
       h_start: m.h_start ?? m.hour_start ?? 9,
       m_start: m.m_start ?? m.minute_start ?? 0,
@@ -327,7 +336,8 @@ async function saveToServer() {
       h_end:    item.h_end,
       m_end:    item.m_end,
       interval: item.interval,
-      days:     item.days
+      days:     item.days,
+      image_url: item.image_url || null
     }))
   };
 
@@ -353,7 +363,7 @@ function setSaveMsg(type, text) {
   el.className = 'save-msg' + (type ? ' ' + type : '');
   el.textContent = text;
 }
-function markDirty() { dirty = true; setSaveMsg('', '⚠️ 有未儲存的變更，請按「儲存並套用」'); }
+function markDirty() { dirty = true; setSaveMsg('', '有未儲存的變更'); }
 
 // ── 台灣假日 ──────────────────────────────────────────
 async function loadTwHolidays(year) {
@@ -436,12 +446,74 @@ function addSchedule(preset) {
   }, 50);
 }
 function removeSchedule(id) {
-  const item = items.find(i => i.id === id);
+  const item = items.find(i=>i.id===id);
   const name = item?.message || '此排程';
   if (!confirm(`確定要刪除「${name}」嗎？`)) return;
-  items = items.filter(i => i.id !== id);
+  items = items.filter(i=>i.id!==id);
   render();
   saveToServer();
+}
+
+async function uploadImage(id) {
+  const input = document.getElementById('img-input-'+id);
+  const file = input.files[0];
+  if (!file) return;
+  const item = items.find(i=>i.id===id);
+  if (!item) return;
+  const idx = items.findIndex(i=>i.id===id);
+  syncAll();
+  const payload = {
+    skip_tw_holidays: skipTwHoliday,
+    custom_skip_dates: customSkipDates,
+    force_send_dates: forceSendDates,
+    scheduled_messages: items.map(i=>({
+      message:i.message, repeat:i.repeat,
+      h_start:i.h_start, m_start:i.m_start,
+      h_end:i.h_end, m_end:i.m_end, interval:i.interval, days:i.days,
+      image_url: i.image_url||null
+    }))
+  };
+  await fetch(API+'/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const statusEl = document.getElementById('img-status-'+id);
+  if (statusEl) statusEl.textContent = '上傳中...';
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const r = await fetch(`${API}/api/upload-image/${idx}`,{method:'POST',body:formData});
+    const d = await r.json();
+    if (d.url) {
+      item.image_url = d.url;
+      render();
+      setTimeout(()=>{
+        const b = document.getElementById('card-body-'+id);
+        if (b){b.classList.add('open');document.getElementById('chev-'+id).classList.add('open');}
+      },50);
+      setSaveMsg('success','✓ 圖片上傳完成');
+    } else {
+      if (statusEl) statusEl.textContent = '上傳失敗：'+(d.detail||'未知錯誤');
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '上傳失敗：'+e.message;
+  }
+}
+
+async function deleteImage(id) {
+  if (!confirm('確定要移除此圖片嗎？')) return;
+  const idx = items.findIndex(i=>i.id===id);
+  const item = items.find(i=>i.id===id);
+  if (!item) return;
+  item.image_url = null;
+  try {
+    await fetch(`${API}/api/upload-image/${idx}`,{method:'DELETE'});
+    render();
+    setTimeout(()=>{
+      const b = document.getElementById('card-body-'+id);
+      if (b){b.classList.add('open');document.getElementById('chev-'+id).classList.add('open');}
+    },50);
+    setSaveMsg('success','✓ 圖片已移除');
+  } catch(e) {
+    setSaveMsg('error','移除失敗：'+e.message);
+  }
 }
 function toggleCard(id) {
   document.getElementById('card-body-'+id).classList.toggle('open');
@@ -512,6 +584,21 @@ function render() {
         </div>
         ${item.repeat?`<div class="form-section"><label class="form-label">每幾分鐘重複一次</label>
           <input type="number" id="iv_${item.id}" min="1" max="1440" value="${item.interval}" style="max-width:160px" oninput="syncItem(${item.id});markDirty()"></div>`:''}
+        <div class="form-section">
+          <label class="form-label">附加圖片（選填）</label>
+          ${item.image_url ? `
+          <div class="img-preview">
+            <img src="${item.image_url}" alt="預覽">
+            <button class="img-preview-del" onclick="deleteImage(${item.id})" title="移除圖片">×</button>
+          </div>` : `
+          <div class="img-upload-area">
+            <input type="file" id="img-input-${item.id}" accept="image/*" onchange="uploadImage(${item.id})">
+            <div style="font-size:13px;color:var(--text3);pointer-events:none;">
+              📎 點此上傳圖片（JPG、PNG、GIF）
+            </div>
+          </div>
+          <div class="img-uploading" id="img-status-${item.id}"></div>`}
+        </div>
         <div class="form-section" style="display:flex;justify-content:flex-end;">
           <button class="btn btn-danger" onclick="removeSchedule(${item.id})">
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>刪除排程
