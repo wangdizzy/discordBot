@@ -353,7 +353,7 @@ function setSaveMsg(type, text) {
   el.className = 'save-msg' + (type ? ' ' + type : '');
   el.textContent = text;
 }
-function markDirty() { dirty = true; setSaveMsg('', '有未儲存的變更'); }
+function markDirty() { dirty = true; setSaveMsg('', '⚠️ 有未儲存的變更，請按「儲存並套用」'); }
 
 // ── 台灣假日 ──────────────────────────────────────────
 async function loadTwHolidays(year) {
@@ -435,7 +435,14 @@ function addSchedule(preset) {
     if (b) { b.classList.add('open'); document.getElementById('chev-'+id).classList.add('open'); }
   }, 50);
 }
-function removeSchedule(id) { items = items.filter(i=>i.id!==id); render(); markDirty(); }
+function removeSchedule(id) {
+  const item = items.find(i => i.id === id);
+  const name = item?.message || '此排程';
+  if (!confirm(`確定要刪除「${name}」嗎？`)) return;
+  items = items.filter(i => i.id !== id);
+  render();
+  saveToServer();
+}
 function toggleCard(id) {
   document.getElementById('card-body-'+id).classList.toggle('open');
   document.getElementById('chev-'+id).classList.toggle('open');
