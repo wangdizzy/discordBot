@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from fastapi import Response
 from typing import List
 import threading
 import uvicorn
@@ -157,7 +158,8 @@ def rebuild_schedules():
                 print(f"[排程-重複] {day_str} {h:02d}:{m:02d} → {message}")
                 cur += iv
 
-    print(f"[排程] 重新載入完成，共 {len(scheduler.get_jobs())-1} 個排程")
+    jobs = [j for j in scheduler.get_jobs() if j.id != "refresh_holidays"]
+    print(f"[排程] 重新載入完成，共 {len(jobs)} 個排程")
 
 @bot.event
 async def on_ready():
@@ -208,6 +210,10 @@ class Settings(BaseModel):
     force_send_dates: List[str] = []
     scheduled_messages: List[dict] = []
 
+@app.head("/")
+def head_ui():
+    return Response()
+
 @app.get("/api/settings")
 def get_settings():
     return load_settings()
@@ -216,12 +222,6 @@ def get_settings():
 def post_settings(body: Settings):
     data = body.dict()
     save_settings(data)
-    # 在 bot 的 event loop 重建排程
-    if bot_loop and bot_loop.is_running():
-        asyncio.run_coroutine_threadsafe(
-            asyncio.coroutine(lambda: rebuild_schedules())(),
-            bot_loop
-        )
     rebuild_schedules()
     return {"status": "ok", "message": "設定已儲存，排程已更新"}
 
