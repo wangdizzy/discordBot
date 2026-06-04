@@ -240,7 +240,8 @@ def get_status():
 # 提供 HTML 靜態頁面
 @app.get("/")
 def serve_ui():
-    return FileResponse("static/index.html")
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    return FileResponse(os.path.join(base_dir, "timeBot.html"))
 
 # ── 啟動兩個服務 ──────────────────────────────────────
 def run_fastapi():
