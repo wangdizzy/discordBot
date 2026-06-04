@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discord Bot 排程設定</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0e0f11;--surface:#16181c;--surface2:#1e2026;
+    --border:#2a2d35;--border2:#3a3e4a;
+    --accent:#5865f2;--accent-dim:rgba(88,101,242,0.15);
+    --green:#3ba55c;--green-dim:rgba(59,165,92,0.15);
+    --red:#ed4245;--red-dim:rgba(237,66,69,0.12);
+    --amber:#f0a732;--amber-dim:rgba(240,167,50,0.12);
+    --text:#e3e5e8;--text2:#8e9297;--text3:#5d6169;
+    --mono:'IBM Plex Mono',monospace;--sans:'Noto Sans TC',sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-weight:300;min-height:100vh}
+  .layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+  .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:24px 16px;display:flex;flex-direction:column;gap:8px;position:sticky;top:0;height:100vh;overflow-y:auto}
+  .main{padding:32px 40px;overflow-y:auto}
+  .logo{display:flex;align-items:center;gap:10px;padding:0 8px 20px;border-bottom:1px solid var(--border);margin-bottom:8px}
+  .logo-icon{width:32px;height:32px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:16px}
+  .logo-text{font-family:var(--mono);font-size:13px;color:var(--text)}
+  .logo-sub{font-size:10px;color:var(--text3)}
+  .nav-section{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.08em;padding:12px 8px 4px;text-transform:uppercase}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;font-size:13px;color:var(--text2);cursor:pointer;transition:all .15s;border:none;background:none;width:100%;text-align:left;font-family:var(--sans)}
+  .nav-item:hover{background:var(--surface2);color:var(--text)}
+  .nav-item.active{background:var(--accent-dim);color:var(--accent)}
+  .nav-item svg{width:16px;height:16px;flex-shrink:0}
+  .nav-count{margin-left:auto;background:var(--surface2);color:var(--text3);font-size:11px;font-family:var(--mono);padding:1px 6px;border-radius:10px}
+  .page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px}
+  .page-title{font-size:22px;font-weight:500;color:var(--text)}
+  .page-sub{font-size:13px;color:var(--text3);margin-top:4px;font-family:var(--mono)}
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:6px;font-size:13px;cursor:pointer;border:1px solid transparent;font-family:var(--sans);transition:all .15s;font-weight:400}
+  .btn svg{width:14px;height:14px}
+  .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn-primary:hover{background:#4752c4}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+  .btn-ghost{background:transparent;color:var(--text2);border-color:var(--border2)}
+  .btn-ghost:hover{background:var(--surface2);color:var(--text)}
+  .btn-danger{background:var(--red-dim);color:var(--red);border-color:transparent}
+  .btn-danger:hover{background:rgba(237,66,69,0.2)}
+  .btn-amber{background:var(--amber-dim);color:var(--amber);border-color:transparent}
+  .btn-amber:hover{background:rgba(240,167,50,0.2)}
+  .schedule-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;transition:border-color .15s}
+  .schedule-card:hover{border-color:var(--border2)}
+  .card-top{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;user-select:none}
+  .card-num{width:24px;height:24px;border-radius:50%;background:var(--surface2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:var(--text3);flex-shrink:0}
+  .card-summary{flex:1;min-width:0}
+  .card-msg{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card-meta{font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:2px}
+  .tag{font-size:11px;font-family:var(--mono);padding:2px 8px;border-radius:4px;flex-shrink:0}
+  .tag-repeat{background:var(--accent-dim);color:var(--accent)}
+  .tag-once{background:var(--surface2);color:var(--text3);border:1px solid var(--border)}
+  .chevron{width:16px;height:16px;color:var(--text3);transition:transform .2s;flex-shrink:0}
+  .chevron.open{transform:rotate(180deg)}
+  .card-body{padding:0 18px 18px;border-top:1px solid var(--border);display:none}
+  .card-body.open{display:block}
+  .form-section{margin-top:16px}
+  .form-label{font-size:11px;font-family:var(--mono);color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;display:block}
+  .form-row{display:flex;gap:10px}
+  .form-group{flex:1}
+  input[type="number"],input[type="text"],input[type="date"],textarea,select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:13px;padding:8px 10px;outline:none;transition:border-color .15s;-moz-appearance:textfield}
+  input[type="date"]{color-scheme:dark}
+  input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none}
+  input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+  textarea{font-family:var(--sans);font-size:13px;resize:vertical;min-height:72px;line-height:1.5}
+  .days-grid{display:flex;gap:6px;flex-wrap:wrap}
+  .day-pill{padding:5px 10px;border-radius:5px;font-size:12px;font-family:var(--mono);border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;transition:all .15s}
+  .day-pill.on{background:var(--accent-dim);color:var(--accent);border-color:var(--accent)}
+  .day-pill:hover:not(.on){border-color:var(--border2);color:var(--text2)}
+  .toggle-wrap{display:flex;align-items:center;gap:10px}
+  .toggle-track{width:38px;height:22px;border-radius:11px;background:var(--border2);position:relative;cursor:pointer;transition:background .2s}
+  .toggle-track.on{background:var(--accent)}
+  .toggle-thumb{width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:left .2s}
+  .toggle-track.on .toggle-thumb{left:19px}
+  .toggle-text{font-size:13px;color:var(--text2)}
+  .divider{height:1px;background:var(--border);margin:14px 0}
+  .empty{text-align:center;padding:48px 24px;border:1px dashed var(--border2);border-radius:10px;margin-bottom:16px}
+  .empty-icon{font-size:32px;margin-bottom:12px;opacity:.4}
+  .empty-text{font-size:14px;color:var(--text3)}
+  .stats{display:flex;gap:24px;margin-bottom:24px}
+  .stat-val{font-family:var(--mono);font-size:22px;font-weight:500;color:var(--text)}
+  .stat-label{font-size:11px;color:var(--text3);margin-top:2px}
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+  .holiday-section{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px}
+  .holiday-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .holiday-title{font-size:15px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:8px}
+  .status-dot{width:7px;height:7px;border-radius:50%;background:var(--text3)}
+  .status-dot.ok{background:var(--green)}
+  .status-dot.loading{background:var(--amber);animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .holiday-status{font-size:12px;font-family:var(--mono);color:var(--text3);display:flex;align-items:center;gap:6px}
+  .date-tag-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:32px}
+  .date-tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--amber-dim);border:1px solid rgba(240,167,50,0.3);border-radius:5px;font-size:12px;font-family:var(--mono);color:var(--amber)}
+  .date-tag button{background:none;border:none;cursor:pointer;color:var(--amber);opacity:.6;font-size:14px;line-height:1;padding:0}
+  .date-tag button:hover{opacity:1}
+  .add-date-row{display:flex;gap:8px;margin-top:8px}
+  .add-date-row input{max-width:180px}
+  .year-badge{font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:4px;background:var(--green-dim);color:var(--green);border:1px solid rgba(59,165,92,0.3)}
+  .info-box{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--text3);font-family:var(--mono);line-height:1.7;margin-top:12px}
+  .info-box span{color:var(--accent)}
+
+  /* 儲存列 */
+  .save-bar{position:fixed;bottom:0;left:260px;right:0;background:var(--surface);border-top:1px solid var(--border);padding:14px 40px;display:flex;align-items:center;justify-content:space-between;z-index:100}
+  .save-msg{font-size:13px;font-family:var(--mono);color:var(--text3);display:flex;align-items:center;gap:8px}
+  .save-msg.success{color:var(--green)}
+  .save-msg.error{color:var(--red)}
+  .save-msg.loading{color:var(--amber)}
+
+  /* bot 狀態 */
+  .bot-status{display:flex;align-items:center;gap:8px;font-size:12px;font-family:var(--mono);color:var(--text3)}
+  .bot-dot{width:7px;height:7px;border-radius:50%;background:var(--text3)}
+  .bot-dot.online{background:var(--green)}
+  main{padding-bottom:70px}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🤖</div>
+      <div><div class="logo-text">timeBot</div><div class="logo-sub">排程設定</div></div>
+    </div>
+    <div class="nav-section">功能</div>
+    <button class="nav-item active" onclick="showTab('schedules',this)">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
+      排程訊息 <span class="nav-count" id="nav-count">0</span>
+    </button>
+    <button class="nav-item" onclick="showTab('holidays',this)">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+      假日設定
+    </button>
+    <div style="margin-top:auto;">
+      <div class="nav-section">Bot 狀態</div>
+      <div style="padding:8px 10px;">
+        <div class="bot-status"><div class="bot-dot" id="bot-dot"></div><span id="bot-status-text">查詢中...</span></div>
+        <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:4px;" id="bot-schedule-count"></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- 排程 Tab -->
+    <div class="tab-content active" id="tab-schedules">
+      <div class="page-header">
+        <div><div class="page-title">排程訊息</div><div class="page-sub">設定 Bot 自動發送規則</div></div>
+        <button class="btn btn-primary" onclick="addSchedule()">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>新增排程
+        </button>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="stat-val" id="stat-total">0</div><div class="stat-label">排程總數</div></div>
+        <div class="stat"><div class="stat-val" id="stat-repeat">0</div><div class="stat-label">重複發送</div></div>
+        <div class="stat"><div class="stat-val" id="stat-once">0</div><div class="stat-label">單次發送</div></div>
+      </div>
+      <div id="schedules-list"></div>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:4px;" onclick="addSchedule()">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>新增排程
+      </button>
+    </div>
+
+    <!-- 假日 Tab -->
+    <div class="tab-content" id="tab-holidays">
+      <div class="page-header">
+        <div><div class="page-title">假日設定</div><div class="page-sub">設定不發送訊息的日期規則</div></div>
+      </div>
+      <div class="holiday-section">
+        <div class="holiday-header">
+          <div class="holiday-title">🇹🇼 台灣國定假日</div>
+          <div class="holiday-status"><div class="status-dot" id="tw-dot"></div><span id="tw-status">未載入</span></div>
+        </div>
+        <div class="toggle-wrap" style="margin-bottom:14px;">
+          <div class="toggle-track on" id="tw-toggle" onclick="toggleTwHoliday()"><div class="toggle-thumb"></div></div>
+          <span class="toggle-text">國定假日自動跳過（預設開啟）</span>
+        </div>
+        <div id="tw-years" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-ghost" onclick="loadTwHolidays(thisYear)">載入 <span id="y1"></span> 年假日</button>
+          <button class="btn btn-ghost" onclick="loadTwHolidays(thisYear+1)">載入 <span id="y2"></span> 年假日</button>
+          <span id="tw-load-msg" style="font-size:12px;font-family:var(--mono);color:var(--text3);"></span>
+        </div>
+        <div class="info-box"><span>資料來源：</span>ruyut/TaiwanCalendar（政府行政機關辦公日曆表）<br><span>包含：</span>國定假日、補假、彈性放假　<span>補班日照常發送</span></div>
+      </div>
+
+      <div class="holiday-section">
+        <div class="holiday-header">
+          <div class="holiday-title">📅 自訂跳過日期</div>
+          <span style="font-size:12px;font-family:var(--mono);color:var(--text3);" id="skip-count">0 個</span>
+        </div>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:12px;">指定額外不發送訊息的日期，例如公司特休。</p>
+        <div class="add-date-row">
+          <input type="date" id="skip-date-input">
+          <button class="btn btn-amber" onclick="addSkipDate()">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>新增
+          </button>
+        </div>
+        <div class="date-tag-list" id="skip-dates-list"><span style="font-size:12px;color:var(--text3);font-family:var(--mono);line-height:32px;">尚未新增</span></div>
+      </div>
+
+      <div class="holiday-section">
+        <div class="holiday-header">
+          <div class="holiday-title">✅ 強制發送日期</div>
+          <span style="font-size:12px;font-family:var(--mono);color:var(--text3);" id="force-count">0 個</span>
+        </div>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:12px;">即使是假日也強制發送，優先級最高。</p>
+        <div class="add-date-row">
+          <input type="date" id="force-date-input">
+          <button class="btn btn-primary" onclick="addForceDate()">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>新增
+          </button>
+        </div>
+        <div class="date-tag-list" id="force-dates-list"><span style="font-size:12px;color:var(--text3);font-family:var(--mono);line-height:32px;">尚未新增</span></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- 儲存列 -->
+<div class="save-bar">
+  <div class="save-msg" id="save-msg">尚未儲存</div>
+  <div style="display:flex;gap:10px;">
+    <button class="btn btn-ghost" onclick="loadFromServer()">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>重新載入
+    </button>
+    <button class="btn btn-primary" id="save-btn" onclick="saveToServer()">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>儲存並套用
+    </button>
+  </div>
+</div>
+
+<script>
+const API = '';  // 同網域，不需要填 URL
+const DAYS_ZH = ['一','二','三','四','五','六','日'];
+const DAYS_EN = ['mon','tue','wed','thu','fri','sat','sun'];
+const thisYear = new Date().getFullYear();
+
+let items = [], uid = 0;
+let skipTwHoliday = true;
+let twHolidayCache = {}, loadedYears = new Set();
+let customSkipDates = [], forceSendDates = [];
+let dirty = false;
+
+document.getElementById('y1').textContent = thisYear;
+document.getElementById('y2').textContent = thisYear + 1;
+
+// ── Bot 狀態輪詢 ──────────────────────────────────────
+async function fetchStatus() {
+  try {
+    const r = await fetch(API + '/api/status');
+    const d = await r.json();
+    const dot = document.getElementById('bot-dot');
+    dot.className = 'bot-dot' + (d.bot_online ? ' online' : '');
+    document.getElementById('bot-status-text').textContent = d.bot_online ? 'Bot 上線中' : 'Bot 離線';
+    document.getElementById('bot-schedule-count').textContent = `${d.schedule_count} 個排程運行中`;
+  } catch { }
+}
+fetchStatus();
+setInterval(fetchStatus, 15000);
+
+// ── 載入設定 ──────────────────────────────────────────
+async function loadFromServer() {
+  setSaveMsg('loading', '載入中...');
+  try {
+    const r = await fetch(API + '/api/settings');
+    const d = await r.json();
+    applySettings(d);
+    setSaveMsg('success', '已從伺服器載入');
+    dirty = false;
+    setTimeout(() => setSaveMsg('', '已儲存'), 2000);
+  } catch(e) {
+    setSaveMsg('error', '載入失敗：' + e.message);
+  }
+}
+
+function applySettings(d) {
+  skipTwHoliday = d.skip_tw_holidays ?? true;
+  document.getElementById('tw-toggle').classList.toggle('on', skipTwHoliday);
+  customSkipDates = d.custom_skip_dates || [];
+  forceSendDates  = d.force_send_dates  || [];
+  renderSkipDates(); renderForceDates();
+
+  items = []; uid = 0;
+  (d.scheduled_messages || []).forEach(m => {
+    const id = ++uid;
+    const days = typeof m.days === 'string'
+      ? m.days.split(',').map(x => DAYS_EN.indexOf(x.trim()) >= 0 ? true : false)
+      : (m.days || [true,true,true,true,true,false,false]);
+    // 補齊 7 天
+    while (days.length < 7) days.push(false);
+    items.push({
+      id,
+      message: m.message || '',
+      repeat:  m.repeat  ?? false,
+      h_start: m.h_start ?? m.hour_start ?? 9,
+      m_start: m.m_start ?? m.minute_start ?? 0,
+      h_end:   m.h_end   ?? m.hour_end   ?? 18,
+      m_end:   m.m_end   ?? m.minute_end  ?? 0,
+      interval: m.interval ?? m.interval_minutes ?? 60,
+      days
+    });
+  });
+  render();
+}
+
+// ── 儲存設定 ──────────────────────────────────────────
+async function saveToServer() {
+  syncAll();
+  setSaveMsg('loading', '儲存中...');
+  document.getElementById('save-btn').disabled = true;
+
+  const payload = {
+    skip_tw_holidays: skipTwHoliday,
+    custom_skip_dates: customSkipDates,
+    force_send_dates: forceSendDates,
+    scheduled_messages: items.map(item => ({
+      message:  item.message,
+      repeat:   item.repeat,
+      h_start:  item.h_start,
+      m_start:  item.m_start,
+      h_end:    item.h_end,
+      m_end:    item.m_end,
+      interval: item.interval,
+      days:     item.days
+    }))
+  };
+
+  try {
+    const r = await fetch(API + '/api/settings', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    setSaveMsg('success', '✓ ' + d.message);
+    dirty = false;
+    fetchStatus();
+  } catch(e) {
+    setSaveMsg('error', '儲存失敗：' + e.message);
+  } finally {
+    document.getElementById('save-btn').disabled = false;
+  }
+}
+
+function setSaveMsg(type, text) {
+  const el = document.getElementById('save-msg');
+  el.className = 'save-msg' + (type ? ' ' + type : '');
+  el.textContent = text;
+}
+function markDirty() { dirty = true; setSaveMsg('', '有未儲存的變更'); }
+
+// ── 台灣假日 ──────────────────────────────────────────
+async function loadTwHolidays(year) {
+  document.getElementById('tw-load-msg').textContent = `載入 ${year} 年中...`;
+  document.getElementById('tw-dot').className = 'status-dot loading';
+  document.getElementById('tw-status').textContent = '載入中';
+  const url = `https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/${year}.json`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    data.forEach(e => { if (e.date) twHolidayCache[e.date] = e.isHoliday; });
+    loadedYears.add(year);
+    renderLoadedYears();
+    const cnt = data.filter(e => e.isHoliday).length;
+    document.getElementById('tw-load-msg').textContent = `${year} 年完成，${cnt} 個假日`;
+    document.getElementById('tw-dot').className = 'status-dot ok';
+    document.getElementById('tw-status').textContent = `已載入 ${[...loadedYears].sort().join('、')} 年`;
+  } catch(e) {
+    document.getElementById('tw-load-msg').textContent = `失敗：${e.message}`;
+    document.getElementById('tw-dot').className = 'status-dot';
+    document.getElementById('tw-status').textContent = '載入失敗';
+  }
+}
+
+function renderLoadedYears() {
+  document.getElementById('tw-years').innerHTML =
+    [...loadedYears].sort().map(y => `<span class="year-badge">${y} 年已載入</span>`).join('');
+}
+
+function toggleTwHoliday() {
+  skipTwHoliday = !skipTwHoliday;
+  document.getElementById('tw-toggle').classList.toggle('on', skipTwHoliday);
+  markDirty();
+}
+
+// ── 日期 Tag ──────────────────────────────────────────
+function addSkipDate() {
+  const v = document.getElementById('skip-date-input').value;
+  if (!v || customSkipDates.includes(v)) return;
+  customSkipDates.push(v); customSkipDates.sort();
+  renderSkipDates(); document.getElementById('skip-date-input').value = ''; markDirty();
+}
+function removeSkipDate(d) { customSkipDates = customSkipDates.filter(x=>x!==d); renderSkipDates(); markDirty(); }
+function renderSkipDates() {
+  const el = document.getElementById('skip-dates-list');
+  document.getElementById('skip-count').textContent = customSkipDates.length + ' 個';
+  el.innerHTML = customSkipDates.length
+    ? customSkipDates.map(d=>`<span class="date-tag">${d}<button onclick="removeSkipDate('${d}')">×</button></span>`).join('')
+    : '<span style="font-size:12px;color:var(--text3);font-family:var(--mono);line-height:32px;">尚未新增</span>';
+}
+
+function addForceDate() {
+  const v = document.getElementById('force-date-input').value;
+  if (!v || forceSendDates.includes(v)) return;
+  forceSendDates.push(v); forceSendDates.sort();
+  renderForceDates(); document.getElementById('force-date-input').value = ''; markDirty();
+}
+function removeForceDate(d) { forceSendDates = forceSendDates.filter(x=>x!==d); renderForceDates(); markDirty(); }
+function renderForceDates() {
+  const el = document.getElementById('force-dates-list');
+  document.getElementById('force-count').textContent = forceSendDates.length + ' 個';
+  el.innerHTML = forceSendDates.length
+    ? forceSendDates.map(d=>`<span class="date-tag" style="background:var(--accent-dim);border-color:rgba(88,101,242,0.3);color:var(--accent);">${d}<button onclick="removeForceDate('${d}')" style="color:var(--accent);">×</button></span>`).join('')
+    : '<span style="font-size:12px;color:var(--text3);font-family:var(--mono);line-height:32px;">尚未新增</span>';
+}
+
+// ── 排程 ─────────────────────────────────────────────
+function addSchedule(preset) {
+  const id = ++uid;
+  items.push(preset ? {...preset, id} : {
+    id, message:'', repeat:false,
+    h_start:9, m_start:0, h_end:18, m_end:0, interval:60,
+    days:[true,true,true,true,true,false,false]
+  });
+  render(); markDirty();
+  setTimeout(() => {
+    const b = document.getElementById('card-body-'+id);
+    if (b) { b.classList.add('open'); document.getElementById('chev-'+id).classList.add('open'); }
+  }, 50);
+}
+function removeSchedule(id) { items = items.filter(i=>i.id!==id); render(); markDirty(); }
+function toggleCard(id) {
+  document.getElementById('card-body-'+id).classList.toggle('open');
+  document.getElementById('chev-'+id).classList.toggle('open');
+}
+function toggleRepeat(id) {
+  syncItem(id); items.find(i=>i.id===id).repeat ^= true; render(); markDirty();
+  const b = document.getElementById('card-body-'+id);
+  if (b) { b.classList.add('open'); document.getElementById('chev-'+id).classList.add('open'); }
+}
+function toggleDay(id, idx) {
+  syncItem(id); items.find(i=>i.id===id).days[idx] ^= true; render(); markDirty();
+  const b = document.getElementById('card-body-'+id);
+  if (b) { b.classList.add('open'); document.getElementById('chev-'+id).classList.add('open'); }
+}
+function syncItem(id) {
+  const item = items.find(i=>i.id===id); if (!item) return;
+  const g = f => { const e = document.getElementById(f+'_'+id); return e ? e.value : ''; };
+  item.message  = g('msg');
+  item.h_start  = parseInt(g('hs'))||0; item.m_start = parseInt(g('ms'))||0;
+  item.h_end    = parseInt(g('he'))||0; item.m_end   = parseInt(g('me'))||0;
+  item.interval = parseInt(g('iv'))||60;
+}
+function syncAll() { items.forEach(i => syncItem(i.id)); }
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function render() {
+  const c = document.getElementById('schedules-list');
+  document.getElementById('nav-count').textContent = items.length;
+  document.getElementById('stat-total').textContent  = items.length;
+  document.getElementById('stat-repeat').textContent = items.filter(i=>i.repeat).length;
+  document.getElementById('stat-once').textContent   = items.filter(i=>!i.repeat).length;
+  if (items.length === 0) {
+    c.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><div class="empty-text">尚未新增任何排程</div></div>';
+    return;
+  }
+  c.innerHTML = items.map((item, idx) => {
+    const metaTime = item.repeat
+      ? `${pad(item.h_start)}:${pad(item.m_start)} – ${pad(item.h_end)}:${pad(item.m_end)}　每 ${item.interval} 分鐘`
+      : `${pad(item.h_start)}:${pad(item.m_start)}`;
+    const activeDays = DAYS_ZH.filter((_,i)=>item.days[i]).map(d=>'週'+d).join('　');
+    return `<div class="schedule-card">
+      <div class="card-top" onclick="toggleCard(${item.id})">
+        <div class="card-num">${idx+1}</div>
+        <div class="card-summary">
+          <div class="card-msg">${item.message||'<span style="color:var(--text3)">（未填訊息）</span>'}</div>
+          <div class="card-meta">${metaTime}　${activeDays}</div>
+        </div>
+        <span class="tag ${item.repeat?'tag-repeat':'tag-once'}">${item.repeat?'重複':'單次'}</span>
+        <svg class="chevron" id="chev-${item.id}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+      </div>
+      <div class="card-body" id="card-body-${item.id}">
+        <div class="form-section"><label class="form-label">訊息內容</label>
+          <textarea id="msg_${item.id}" oninput="syncItem(${item.id});markDirty()">${item.message}</textarea></div>
+        <div class="form-section"><label class="form-label">執行日</label>
+          <div class="days-grid">${DAYS_ZH.map((d,i)=>`<button class="day-pill ${item.days[i]?'on':''}" onclick="toggleDay(${item.id},${i})">週${d}</button>`).join('')}</div></div>
+        <div class="form-section"><div class="toggle-wrap">
+          <div class="toggle-track ${item.repeat?'on':''}" onclick="toggleRepeat(${item.id})"><div class="toggle-thumb"></div></div>
+          <span class="toggle-text">重複發送（開啟後可設定結束時間與間隔）</span>
+        </div></div>
+        <div class="divider"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">開始時間（時）</label><input type="number" id="hs_${item.id}" min="0" max="23" value="${item.h_start}" oninput="syncItem(${item.id});markDirty()"></div>
+          <div class="form-group"><label class="form-label">開始時間（分）</label><input type="number" id="ms_${item.id}" min="0" max="59" value="${item.m_start}" oninput="syncItem(${item.id});markDirty()"></div>
+          ${item.repeat?`
+          <div class="form-group"><label class="form-label">結束時間（時）</label><input type="number" id="he_${item.id}" min="0" max="23" value="${item.h_end}" oninput="syncItem(${item.id});markDirty()"></div>
+          <div class="form-group"><label class="form-label">結束時間（分）</label><input type="number" id="me_${item.id}" min="0" max="59" value="${item.m_end}" oninput="syncItem(${item.id});markDirty()"></div>`:''}
+        </div>
+        ${item.repeat?`<div class="form-section"><label class="form-label">每幾分鐘重複一次</label>
+          <input type="number" id="iv_${item.id}" min="1" max="1440" value="${item.interval}" style="max-width:160px" oninput="syncItem(${item.id});markDirty()"></div>`:''}
+        <div class="form-section" style="display:flex;justify-content:flex-end;">
+          <button class="btn btn-danger" onclick="removeSchedule(${item.id})">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>刪除排程
+          </button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+// 啟動：載入伺服器設定 + 台灣假日
+(async () => {
+  await loadFromServer();
+  await loadTwHolidays(thisYear);
+  await loadTwHolidays(thisYear + 1);
+})();
+</script>
+</body>
+</html>
